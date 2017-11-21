@@ -7,11 +7,19 @@ import java.net.URI;
  * @since 11/21/2017
  */
 class RunetekUpdateClient extends WebSocketClient {
-    private final OldSchoolRelease release;
+    private static final String WEBSOCKET_ENDPOINT = "wss://updates.runetek.io";
 
-    RunetekUpdateClient(final OldSchoolRelease release) {
-        super(URI.create(ExampleListener.WEBSOCKET_ENDPOINT));
-        this.release = release;
+    public interface Listener {
+        void onReleaseChanged(int release);
+    }
+
+    private final Listener listener;
+
+    private int current = -1;
+
+    RunetekUpdateClient(final Listener listener) {
+        super(URI.create(WEBSOCKET_ENDPOINT));
+        this.listener = listener;
     }
 
     public void onOpen(final ServerHandshake serverHandshake) {
@@ -20,7 +28,14 @@ class RunetekUpdateClient extends WebSocketClient {
 
     public void onMessage(final String s) {
         final int rev = Integer.parseInt(s);
-        release.setCurrent(rev);
+        if (rev > current) {
+            current = rev;
+            dispatch();
+        }
+    }
+
+    private void dispatch() {
+        listener.onReleaseChanged(current);
     }
 
     public void onClose(final int i, final String s, final boolean b) {
